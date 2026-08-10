@@ -1,0 +1,30 @@
+{
+  "sociologia": {
+    "discipline": "sociologia",
+    "ready": 3374,
+    "raw": 5170,
+    "excluded": {"image":595,"discursive":1169,"canceled":21,"struct":6,"duplicate":5},
+    "categories": {"sociedade":"Sociedade e Sociologia","cultura":"Cultura e desigualdades","poder":"Poder e cidadania","trabalho":"Trabalho e mundo contemporâneo"}
+  },
+  "filosofia": {
+    "discipline": "filosofia",
+    "ready": 3632,
+    "raw": 5192,
+    "excluded": {"image":263,"discursive":1272,"struct":2,"canceled":19,"duplicate":4},
+    "categories": {"antiga_medieval":"Filosofia antiga e medieval","conhecimento":"Conhecimento, ciência e verdade","etica_existencia":"Ética e existência","politica_sociedade":"Política e sociedade","arte_contemporanea":"Arte, linguagem e contemporaneidade"}
+  },
+  "historia": {
+    "discipline": "historia",
+    "ready": 15580,
+    "raw": 19311,
+    "excluded": {"image":218,"discursive":3452,"struct":14,"bad_key":1,"duplicate":46},
+    "categories": {"antiga_medieval":"Mundos antigos e medievais","moderna":"Mundo moderno","contemporanea":"Mundo contemporâneo","brasil_ate_1889":"Brasil até 1889","brasil_republica":"Brasil República"}
+  },
+  "geografia": {
+    "discipline": "geografia",
+    "ready": 20925,
+    "raw": 25084,
+    "excluded": {"image":135,"struct":11,"discursive":3957,"duplicate":52,"bad_key":4},
+    "categories": {"cartografia":"Cartografia e representação do espaço","natureza_ambiente":"Natureza, clima e ambiente","populacao_urbano":"População, cidades e redes","economia_territorio":"Economia, campo e indústria","geopolitica":"Geopolítica e globalização","brasil":"Brasil e regionalização"}
+  }
+}
