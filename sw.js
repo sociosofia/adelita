@@ -1,4 +1,4 @@
-const VERSION = 'adelita-pwa-v0.5.1-1';
+const VERSION = 'adelita-pwa-v0.6';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './METADADOS_BANCOS.json',
   './assets/logo_etec_bayeux.png', './assets/logo_bayeux.png', './assets/logo_cps.png',
@@ -16,7 +16,6 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   const sameOrigin = url.origin === self.location.origin;
 
-  // Navegação: prefere a versão nova e usa o cache apenas se estiver offline.
   if (event.request.mode === 'navigate') {
     event.respondWith((async () => {
       try {
@@ -33,7 +32,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Bancos grandes: só entram no cache quando forem realmente usados.
   if (sameOrigin && url.pathname.includes('/banks/')) {
     event.respondWith(caches.open(VERSION).then(async cache => {
       const cached = await cache.match(event.request);
