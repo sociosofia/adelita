@@ -1,0 +1,16 @@
+{
+  "name": "Gerador de Avaliações de Humanas — Adelita",
+  "short_name": "Avaliações Adelita",
+  "description": "Gerador de avaliações de Filosofia, Sociologia, História e Geografia da Profa. Adelita.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#b5121b",
+  "orientation": "any",
+  "icons": [
+    {"src":"assets/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"assets/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any"},
+    {"src":"assets/icon-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}
+  ]
+}
