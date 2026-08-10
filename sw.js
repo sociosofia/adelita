@@ -1,4 +1,4 @@
-const VERSION = 'adelita-pwa-v0.6';
+const VERSION = 'adelita-pwa-v0.7';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './METADADOS_BANCOS.json',
   './assets/logo_etec_bayeux.png', './assets/logo_bayeux.png', './assets/logo_cps.png',
