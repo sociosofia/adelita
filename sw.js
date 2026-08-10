@@ -1,4 +1,4 @@
-const VERSION = 'adelita-pwa-v0.5-1';
+const VERSION = 'adelita-pwa-v0.5.1-1';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './METADADOS_BANCOS.json',
   './assets/logo_etec_bayeux.png', './assets/logo_bayeux.png', './assets/logo_cps.png',
@@ -15,6 +15,25 @@ self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   const sameOrigin = url.origin === self.location.origin;
+
+  // Navegação: prefere a versão nova e usa o cache apenas se estiver offline.
+  if (event.request.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(event.request);
+        if (response.ok) {
+          const cache = await caches.open(VERSION);
+          cache.put('./index.html', response.clone());
+        }
+        return response;
+      } catch (_) {
+        return (await caches.match('./index.html')) || (await caches.match('./'));
+      }
+    })());
+    return;
+  }
+
+  // Bancos grandes: só entram no cache quando forem realmente usados.
   if (sameOrigin && url.pathname.includes('/banks/')) {
     event.respondWith(caches.open(VERSION).then(async cache => {
       const cached = await cache.match(event.request);
@@ -25,6 +44,7 @@ self.addEventListener('fetch', event => {
     }));
     return;
   }
+
   event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
     if ((sameOrigin || url.hostname === 'cdn.jsdelivr.net') && response.ok) {
       caches.open(VERSION).then(cache => cache.put(event.request, response.clone()));
