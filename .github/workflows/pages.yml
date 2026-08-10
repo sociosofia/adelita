@@ -32,10 +32,11 @@ jobs:
           else
             cp -a index.html manifest.webmanifest sw.js METADADOS_BANCOS.json assets _site/ 2>/dev/null || true
           fi
-          # O ZIP guarda os bancos; estes dois arquivos ficam sob controle do repo
+          # O ZIP guarda os bancos; estes arquivos ficam sob controle do repo
           # para podermos corrigir o PWA sem reenviar 17 MB a cada ajuste.
           cp sw.js _site/sw.js
           python scripts/hotfix_pwa.py
+          python scripts/hotfix_keep_question_together.py
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
