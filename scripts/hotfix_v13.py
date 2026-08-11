@@ -1,5 +1,5 @@
 from pathlib import Path
-import gzip, base64, shutil
+import shutil
 
 site=Path('_site')
 index=site/'index.html'
@@ -7,20 +7,13 @@ history=site/'history_v11.js'
 text=index.read_text(encoding='utf-8')
 h=history.read_text(encoding='utf-8')
 
-# Publica apenas a camada compacta de comentários de Sociologia.
-parts=[]
-for i in range(1,5):
-    parts.append(Path(__file__).with_name(f'commentary_soc_v13.part{i}').read_text(encoding='utf-8').strip())
-raw=gzip.decompress(base64.b64decode(''.join(parts)))
-comments=site/'comments'
-comments.mkdir(exist_ok=True)
-(comments/'sociologia.json').write_bytes(raw)
-
 lookup=Path(__file__).with_name('commentary_lookup_v13.js')
-if not lookup.exists(): raise SystemExit('v1.3: commentary_lookup_v13.js ausente')
+if not lookup.exists():
+    raise SystemExit('v1.3: commentary_lookup_v13.js ausente')
 shutil.copy2(lookup,site/'commentary_lookup_v13.js')
 
-# A importação manual v1.2 deixa de fazer parte da interface normal.
+# A importação manual de JSON da v1.2 deixa de fazer parte da interface.
+# Na v1.3 a consulta só acontece, questão por questão, quando a professora pede.
 text=text.replace('<script src="./commentary_v12.js"></script>','')
 script='<script src="./commentary_lookup_v13.js"></script>'
 if script not in text:
@@ -40,15 +33,19 @@ new="""    let lookupStats=null;
       const keyBtn=document.getElementById('keyDocxBtn');
       const oldLabel=keyBtn?.textContent;
       if(keyBtn){keyBtn.disabled=true;keyBtn.textContent='Buscando comentários…'}
-      try{lookupStats=await window.AdelitaCommentaryLookup.enrichQuestions(qs)}
-      catch(err){console.warn('Busca de comentários indisponível',err)}
+      try{
+        lookupStats=await window.AdelitaCommentaryLookup.enrichQuestions(qs,{onProgress:p=>{
+          if(keyBtn&&p.total)keyBtn.textContent=`Buscando comentários ${p.done}/${p.total}…`;
+        }});
+      }catch(err){console.warn('Busca de comentários indisponível',err)}
       finally{if(keyBtn){keyBtn.disabled=false;keyBtn.textContent=oldLabel||'⬇️ Gerar gabarito DOCX'}}
     }
-    // Se nada enriquecido estiver disponível, não bloqueia a professora:
-    // gera automaticamente o gabarito simples.
+    // Falha de rede ou ausência de resolução nunca bloqueia a geração:
+    // se nenhum comentário foi encontrado, cai automaticamente no gabarito simples.
     if(commented&&!hasCommentary(qs))commented=false;
 """
-if old not in h: raise SystemExit('v1.3: guarda antiga do gabarito comentado não encontrada')
+if old not in h:
+    raise SystemExit('v1.3: guarda antiga do gabarito comentado não encontrada')
 h=h.replace(old,new,1)
 
 old_intro="""      children.push(new Paragraph({children:[run('Documento de revisão da professora. Os comentários abaixo só aparecem quando existem dados enriquecidos no banco; a Adelita não inventa justificativas ausentes.',{italics:true,size:18,color:'555555'})],spacing:{after:180}}));
@@ -68,12 +65,14 @@ new_intro="""      const found=lookupStats?.found;
         }
         children.push(new Paragraph({children:[run(`${i+1}. (${bancaAno(q)}) `,{bold:true,size:21}),run(cleanText(q.t),{size:21})],spacing:{before:i?180:0,after:90,line:276},widowControl:true}));
 """
-if old_intro not in h: raise SystemExit('v1.3: bloco comentado não encontrado')
+if old_intro not in h:
+    raise SystemExit('v1.3: bloco comentado não encontrado')
 h=h.replace(old_intro,new_intro,1)
 
 start=h.find('  function installKeyButtons(){')
 end=h.find('\n  function updateKeyButtonState(){',start)
-if start<0 or end<0: raise SystemExit('v1.3: installKeyButtons não encontrado')
+if start<0 or end<0:
+    raise SystemExit('v1.3: installKeyButtons não encontrado')
 new_install="""  function installKeyButtons(){
     const toolbar=document.getElementById('toolbar');if(!toolbar)return;
     document.getElementById('secondaryTools')?.remove();
@@ -95,7 +94,8 @@ h=h[:start]+new_install+h[end:]
 
 start=h.find('  function updateKeyButtonState(){')
 end=h.find('\n  function installHistoryStyles(){',start)
-if start<0 or end<0: raise SystemExit('v1.3: updateKeyButtonState não encontrado')
+if start<0 or end<0:
+    raise SystemExit('v1.3: updateKeyButtonState não encontrado')
 new_update="""  function updateKeyButtonState(){
     const n=(state.exam||[]).length;
     const key=document.getElementById('keyDocxBtn');if(key)key.disabled=!n;
@@ -104,10 +104,11 @@ new_update="""  function updateKeyButtonState(){
 """
 h=h[:start]+new_update+h[end:]
 
-# Histórico: a busca comentada passa a ser sob demanda e nunca fica desabilitada.
+# No histórico, o botão comentado também consulta sob demanda; não precisa saber
+# previamente se aquela prova já tinha comentários gravados localmente.
 h=h.replace("${comment?'':'disabled title=\"Comentários enriquecidos ainda indisponíveis\"'}",'title="Busca comentários disponíveis na hora"')
 
-# Ajusta estilo do novo controle no toolbar.
+# Estilo do novo controle ao lado do gabarito.
 h=h.replace('.toolbar>#commentedKeyDocxBtn{order:-1}', '.toolbar>#keyCommentLookupWrap{order:-1}')
 h=h.replace('@media(max-width:600px){.hist-v11-head', '.key-comment-lookup{display:flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:12px;cursor:pointer;white-space:nowrap}.key-comment-lookup input{accent-color:#222}@media(max-width:600px){.hist-v11-head')
 h=h.replace('.toolbar .btn{flex:1 1 100%}', '.toolbar .btn{flex:1 1 100%}.toolbar>#keyCommentLookupWrap{flex:1 1 100%;justify-content:center}')
@@ -118,7 +119,10 @@ if '// ADELITA-REMOTE-COMMENTS-v1.3' not in h:
 history.write_text(h,encoding='utf-8')
 index.write_text(text,encoding='utf-8')
 
-if b'4000331118' not in raw: raise SystemExit('v1.3: pacote de comentários parece inválido')
-if 'keyCommentLookup' not in h: raise SystemExit('v1.3: checkbox de comentários não aplicado')
-if './commentary_v12.js' in text: raise SystemExit('v1.3: importador antigo ainda está ativo')
-print(f'Hotfix v1.3 aplicado: comentários sob demanda ({len(raw)/1024/1024:.2f} MiB JSON compactado no deploy)')
+if 'keyCommentLookup' not in h:
+    raise SystemExit('v1.3: checkbox de comentários não aplicado')
+if './commentary_v12.js' in text:
+    raise SystemExit('v1.3: importador antigo ainda está ativo')
+if './commentary_lookup_v13.js' not in text:
+    raise SystemExit('v1.3: lookup remoto não foi injetado')
+print('Hotfix v1.3 aplicado: gabarito DOCX com busca opcional de comentários por questão')
