@@ -3,12 +3,12 @@ from pathlib import Path
 path = Path('_site/index.html')
 text = path.read_text(encoding='utf-8')
 
-marker = '// DOCX-EXPORT-v0.9'
+marker = '// DOCX-EXPORT-v0.9.1'
 
 if marker not in text:
     js = r'''
 
-// DOCX-EXPORT-v0.9
+// DOCX-EXPORT-v0.9.1
 const ADELITA_DOCX_LIB='https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.iife.js';
 
 function loadAdelitaDocx(){
@@ -47,6 +47,14 @@ function downloadAdelitaBlob(blob,filename){
   setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
 
+async function fetchDocxAsset(url){
+  try{
+    const r=await fetch(url);
+    if(!r.ok)return null;
+    return await r.arrayBuffer();
+  }catch(_){return null}
+}
+
 async function exportEditableDocx(){
   if(!state?.exam?.length){
     alert('Gere ou selecione uma prova antes de exportar o DOCX.');
@@ -54,13 +62,17 @@ async function exportEditableDocx(){
   }
 
   const d=await loadAdelitaDocx();
-  const {Document,Paragraph,TextRun,Header,Packer,AlignmentType}=d;
+  const {
+    Document,Paragraph,TextRun,Header,Packer,AlignmentType,
+    Table,TableRow,TableCell,ImageRun,WidthType,BorderStyle,
+    VerticalAlign,TableLayoutType
+  }=d;
   const h=headerData();
   const children=[];
   const baseSize=22; // 11 pt: propositalmente simples para edição fina no Word.
 
-  function run(text,{bold=false,italics=false,size=baseSize}={}){
-    return new TextRun({text:String(text||''),bold,italics,size,font:'Arial'});
+  function run(text,{bold=false,italics=false,size=baseSize,color='000000'}={}){
+    return new TextRun({text:String(text||''),bold,italics,size,color,font:'Arial'});
   }
 
   state.exam.forEach((q,i)=>{
@@ -73,7 +85,7 @@ async function exportEditableDocx(){
 
     if(q.s){
       children.push(new Paragraph({
-        children:[run(cleanText(q.s),{italics:true,size:19})],
+        children:[run(cleanText(q.s),{italics:true,size:19,color:'444444'})],
         indent:{left:140},
         spacing:{after:80,line:240},
         widowControl:true
@@ -90,26 +102,110 @@ async function exportEditableDocx(){
     });
   });
 
-  const headerLines=[
+  const [etecLogo,cpsLogo]=await Promise.all([
+    fetchDocxAsset('./assets/logo_etec_bayeux.png'),
+    fetchDocxAsset('./assets/logo_cps.png')
+  ]);
+
+  const none={style:BorderStyle.NONE,size:0,color:'FFFFFF'};
+  const noBorders={top:none,bottom:none,left:none,right:none,insideHorizontal:none,insideVertical:none};
+  const headerWidth=10466;
+  const colWidths=[2150,6166,2150];
+
+  function logoParagraph(buffer,side){
+    const children=[];
+    if(buffer){
+      children.push(new ImageRun({
+        type:'png',
+        data:buffer,
+        transformation:side==='left'?{width:72,height:29}:{width:76,height:30},
+        altText:{
+          title:side==='left'?'ETEC':'Centro Paula Souza',
+          description:side==='left'?'Logotipo ETEC':'Logotipo Centro Paula Souza',
+          name:side==='left'?'logo-etec':'logo-cps'
+        }
+      }));
+    }else{
+      children.push(run(side==='left'?'ETEC':'CPS',{bold:true,size:18,color:'666666'}));
+    }
+    return new Paragraph({
+      alignment:side==='left'?AlignmentType.LEFT:AlignmentType.RIGHT,
+      children,
+      spacing:{before:0,after:0}
+    });
+  }
+
+  const titleCell=new TableCell({
+    width:{size:colWidths[1],type:WidthType.DXA},
+    verticalAlign:VerticalAlign.CENTER,
+    borders:noBorders,
+    margins:{top:0,bottom:0,left:80,right:80},
+    children:[
+      new Paragraph({
+        alignment:AlignmentType.CENTER,
+        children:[run(h.title||'AVALIAÇÃO',{bold:true,size:23})],
+        spacing:{before:0,after:12}
+      }),
+      new Paragraph({
+        alignment:AlignmentType.CENTER,
+        children:[run([h.component,h.className,formatDate(h.date)].filter(Boolean).join(' · '),{size:17,color:'444444'})],
+        spacing:{before:0,after:0}
+      })
+    ]
+  });
+
+  const brandingTable=new Table({
+    width:{size:headerWidth,type:WidthType.DXA},
+    columnWidths:colWidths,
+    layout:TableLayoutType.FIXED,
+    borders:noBorders,
+    rows:[new TableRow({children:[
+      new TableCell({
+        width:{size:colWidths[0],type:WidthType.DXA},verticalAlign:VerticalAlign.CENTER,
+        borders:noBorders,margins:{top:0,bottom:0,left:0,right:0},children:[logoParagraph(etecLogo,'left')]
+      }),
+      titleCell,
+      new TableCell({
+        width:{size:colWidths[2],type:WidthType.DXA},verticalAlign:VerticalAlign.CENTER,
+        borders:noBorders,margins:{top:0,bottom:0,left:0,right:0},children:[logoParagraph(cpsLogo,'right')]
+      })
+    ]})]
+  });
+
+  const nameLine=new Paragraph({
+    children:[
+      run('Nome: ',{bold:true,size:19}),
+      run('_______________________________________________',{size:19}),
+      run('   Nº: ',{bold:true,size:19}),
+      run('______',{size:19}),
+      run(h.className?`   Turma: ${h.className}`:'',{bold:true,size:19})
+    ],
+    spacing:{before:45,after:0},
+    border:{bottom:{style:BorderStyle.SINGLE,size:5,color:'B7B7B7',space:2}}
+  });
+
+  const firstHeader=new Header({children:[brandingTable,nameLine]});
+
+  const defaultHeader=new Header({children:[
     new Paragraph({
       alignment:AlignmentType.CENTER,
-      children:[run(h.title||'AVALIAÇÃO',{bold:true,size:24})],
-      spacing:{after:30}
-    }),
-    new Paragraph({
-      alignment:AlignmentType.CENTER,
-      children:[run([h.component,h.className,formatDate(h.date)].filter(Boolean).join(' · '),{size:18})],
-      spacing:{after:60}
+      children:[
+        run(h.title||'AVALIAÇÃO',{bold:true,size:17,color:'333333'}),
+        run(` · ${[h.component,h.className,formatDate(h.date)].filter(Boolean).join(' · ')}`,{size:16,color:'555555'})
+      ],
+      spacing:{before:0,after:0},
+      border:{bottom:{style:BorderStyle.SINGLE,size:3,color:'D0D0D0',space:1}}
     })
-  ];
+  ]});
 
   const doc=new Document({
     sections:[{
       properties:{
-        page:{margin:{top:720,right:720,bottom:720,left:720,header:360,footer:360}},
+        titlePage:true,
+        page:{margin:{top:920,right:720,bottom:720,left:720,header:240,footer:360}},
         column:{count:2,space:360,equalWidth:true,separate:true}
       },
-      headers:{default:new Header({children:headerLines})},
+      headers:{first:firstHeader,default:defaultHeader},
       children
     }]
   });
@@ -131,7 +227,7 @@ function installDocxExportButton(){
   btn.type='button';
   btn.className=anchor.className;
   btn.textContent='DOCX editável';
-  btn.title='Exportar a prova atual para Word com formatação mínima e editável';
+  btn.title='Exportar a prova atual para Word com cabeçalho e formatação leve, totalmente editável';
   if(!btn.className)btn.style.cssText='margin-left:8px;padding:9px 12px;border:1px solid #bbb;border-radius:8px;background:#fff;cursor:pointer';
   btn.addEventListener('click',async()=>{
     const old=btn.textContent;
@@ -149,16 +245,21 @@ else setTimeout(installDocxExportButton,0);
 
     outer_end = text.rfind('</script></body></html>')
     if outer_end == -1:
-        raise SystemExit('v0.9: fechamento do script principal não encontrado')
+        raise SystemExit('v0.9.1: fechamento do script principal não encontrado')
     text = text[:outer_end] + js + text[outer_end:]
 
-text = text.replace('Adelita v0.8</title>', 'Adelita v0.9</title>')
-text = text.replace('para a Profa. Adelita · v0.8</small>', 'para a Profa. Adelita · v0.9</small>')
+for old in ('0.8','0.9'):
+    text = text.replace(f'Adelita v{old}</title>', 'Adelita v0.9.1</title>')
+    text = text.replace(f'para a Profa. Adelita · v{old}</small>', 'para a Profa. Adelita · v0.9.1</small>')
 
 if marker not in text:
-    raise SystemExit('v0.9: exportador DOCX não foi inserido')
+    raise SystemExit('v0.9.1: exportador DOCX não foi inserido')
 if 'exportEditableDocx' not in text or 'docxExportBtn' not in text:
-    raise SystemExit('v0.9: função ou botão DOCX ausente')
+    raise SystemExit('v0.9.1: função ou botão DOCX ausente')
+if 'logo_etec_bayeux.png' not in text or 'logo_cps.png' not in text:
+    raise SystemExit('v0.9.1: logos institucionais ausentes do exportador')
+if 'titlePage:true' not in text or 'Nome:' not in text:
+    raise SystemExit('v0.9.1: cabeçalho de primeira página ou identificação ausente')
 
 path.write_text(text, encoding='utf-8')
-print('Hotfix v0.9 aplicado: exportação DOCX editável em duas colunas')
+print('Hotfix v0.9.1 aplicado: DOCX com cabeçalho institucional e campo de identificação')
