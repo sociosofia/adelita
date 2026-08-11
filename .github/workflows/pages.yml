@@ -37,6 +37,7 @@ jobs:
           cp sw.js _site/sw.js
           python scripts/hotfix_pwa.py
           python scripts/hotfix_keep_question_together.py
+          python scripts/hotfix_docx_export.py
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
