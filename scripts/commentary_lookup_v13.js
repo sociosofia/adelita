@@ -117,8 +117,10 @@
   }
 
   async function enrichQuestions(questions,{concurrency=5,onProgress=null}={}){
-    const qs=(questions||[]).filter(q=>/^\d+$/.test(sidOf(q)));
-    let cursor=0,done=0,found=0,failed=0;
+    const all=questions||[];
+    const already=all.filter(q=>q?.commentary||(q?.o||[]).some(o=>o?.commentary)).length;
+    const qs=all.filter(q=>/^\d+$/.test(sidOf(q))&&!(q?.commentary||(q?.o||[]).some(o=>o?.commentary)));
+    let cursor=0,done=0,found=already,failed=0;
     async function worker(){
       while(cursor<qs.length){
         const q=qs[cursor++],sid=sidOf(q);
@@ -128,7 +130,7 @@
       }
     }
     await Promise.all(Array.from({length:Math.min(Math.max(1,concurrency),qs.length||1)},worker));
-    return{total:(questions||[]).length,queried:qs.length,found,missing:Math.max(0,(questions||[]).length-found),failed};
+    return{total:all.length,queried:qs.length,found,missing:Math.max(0,all.length-found),failed};
   }
 
   window.AdelitaCommentaryLookup={enrichQuestions,endpoint:API_BASE,clearMemory:()=>memory.clear()};
