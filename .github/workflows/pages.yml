@@ -39,6 +39,7 @@ jobs:
           python scripts/hotfix_keep_question_together.py
           python scripts/hotfix_docx_export.py
           python scripts/hotfix_builder_v1.py
+          python scripts/hotfix_history_v11.py
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
