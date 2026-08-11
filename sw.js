@@ -1,9 +1,10 @@
-const VERSION = 'adelita-pwa-v0.8';
+const VERSION = 'adelita-pwa-v0.9';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './METADADOS_BANCOS.json',
   './assets/logo_etec_bayeux.png', './assets/logo_bayeux.png', './assets/logo_cps.png',
   './assets/icon-192.png', './assets/icon-512.png', './assets/icon-maskable-512.png',
-  'https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js'
+  'https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js',
+  'https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.iife.js'
 ];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(VERSION).then(cache => Promise.allSettled(SHELL.map(u => cache.add(u)))).then(()=>self.skipWaiting()));
