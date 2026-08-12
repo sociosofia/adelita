@@ -1,4 +1,4 @@
-// ADELITA-COMMENTARY-LOOKUP-v1.3
+// ADELITA-COMMENTARY-LOOKUP-v1.3.2
 (() => {
   const API_BASE='https://drivedepobre.com/api/questoes/q/';
   const DB_NAME='adelita_commentary_remote_v13';
@@ -6,6 +6,41 @@
   const STORE='comments';
   const memory=new Map();
   let dbPromise=null;
+
+  // Semente estática para validar o novo caminho sem CORS. A próxima etapa
+  // amplia esta camada a partir dos quatro JSONs enriquecidos completos.
+  // As chaves são IDs globais da questão, portanto funcionam em qualquer
+  // disciplina em que aquela questão apareça.
+  const STATIC={
+    '4000331118':{
+      sid:'4000331118',answer:'A',
+      general:'A questão exige reconhecer a distinção feita por Foucault entre duas formas modernas de exercício do poder: uma voltada ao corpo individual e outra à regulação da população como conjunto biológico.',
+      alternatives:{
+        A:'Correta. O primeiro tipo corresponde ao poder disciplinar, que atua sobre os corpos individuais por meio de vigilância, normalização e controle; o segundo é o biopoder, que regula populações por meio de estatísticas, políticas de saúde e gestão da vida coletiva.',
+        B:'Incorreta. “Dominação legal” é conceito associado a Weber, não a Foucault, e não corresponde ao primeiro tipo descrito.',
+        C:'Incorreta. A alternativa é genérica e não utiliza os conceitos específicos formulados por Foucault.',
+        D:'Incorreta. Panoptismo é um mecanismo do poder disciplinar, e genealogia é um método analítico, não uma forma de poder.'
+      }
+    },
+    '4000000063':{
+      sid:'4000000063',answer:'C',general:'',
+      alternatives:{
+        A:'Alternativa A está incorreta. Platão considera a Beleza uma ideia dotada de perfeição; nesse sentido, ela deve ser independente dos juízos particulares.',
+        B:'Alternativa B está incorreta. Platão acredita que há uma Beleza superior; portanto, belo e feio se distinguem.',
+        C:'Alternativa C está correta. A resposta está de acordo com a concepção platônica de conhecimento: é preciso conhecer a ideia de Beleza para julgar as coisas belas.',
+        D:'Alternativa D está incorreta. Para Platão, o filósofo é capaz de ter acesso às ideias; o critério não é inacessível aos seres humanos.',
+        E:'Alternativa E está incorreta. Para Platão, o objeto produzido pelo artista é aparência, não a Beleza em si.'
+      }
+    },
+    '4000000266':{
+      sid:'4000000266',answer:'B',alternatives:{},
+      general:'A questão é interdisciplinar com Filosofia. O texto de Aristóteles associa virtude, prática e tornar-se bom, remetendo à reflexão ética. A estética se volta à arte, à aparência e à beleza; já a ética aristotélica trata das virtudes e da vida boa. Portanto, a resposta correta é B, ética.'
+    },
+    '4000000068':{
+      sid:'4000000068',answer:'D',alternatives:{},
+      general:'A projeção azimutal também é chamada de plana ou zenital; toda passagem de uma superfície tridimensional para um plano produz distorções; a projeção de Mercator foi criada para navegação; e a projeção azimutal é especialmente adequada à representação das regiões polares. Portanto, a alternativa correta é D.'
+    }
+  };
 
   const sidOf=q=>String(q?.sid??q?.question_id??q?.id??'')
     .replace(/^(SOC|FIL|HIS|GEO)-/i,'').trim();
@@ -52,6 +87,7 @@
   }
 
   async function cacheGet(sid){
+    if(STATIC[sid])return STATIC[sid];
     if(memory.has(sid))return memory.get(sid);
     try{
       const db=await openDb();
@@ -133,5 +169,5 @@
     return{total:all.length,queried:qs.length,found,missing:Math.max(0,all.length-found),failed};
   }
 
-  window.AdelitaCommentaryLookup={enrichQuestions,endpoint:API_BASE,clearMemory:()=>memory.clear()};
+  window.AdelitaCommentaryLookup={enrichQuestions,endpoint:API_BASE,staticCount:Object.keys(STATIC).length,clearMemory:()=>memory.clear()};
 })();
