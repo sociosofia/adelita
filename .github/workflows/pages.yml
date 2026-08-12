@@ -42,6 +42,7 @@ jobs:
           python scripts/hotfix_history_v11.py
           python scripts/hotfix_v12.py
           python scripts/hotfix_v13.py
+          python scripts/hotfix_v131.py
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
