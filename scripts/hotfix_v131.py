@@ -64,12 +64,14 @@ if old_page not in h:
     raise SystemExit('v1.3.1: propriedades da página do gabarito não encontradas')
 h=h.replace(old_page,new_page,1)
 
-text=text.replace('Adelita v1.3</title>','Adelita v1.3.1</title>')
-text=text.replace('para a Profa. Adelita · v1.3</small>','para a Profa. Adelita · v1.3.1</small>')
+# v1.4 é a versão visível; o ajuste da tabela continua sendo aplicado por este hotfix.
+for oldv in ('v1.3','v1.3.1','v1.3.2'):
+    text=text.replace(f'Adelita {oldv}</title>','Adelita v1.4</title>')
+    text=text.replace(f'para a Profa. Adelita · {oldv}</small>','para a Profa. Adelita · v1.4</small>')
 
 history.write_text(h,encoding='utf-8')
 index.write_text(text,encoding='utf-8')
 
 if 'columnWidths:widths' not in h or 'width:{size:10200' not in h:
     raise SystemExit('v1.3.1: nova tabela não foi aplicada')
-print('Hotfix v1.3.1 aplicado: tabela do gabarito alinhada e A4 explícito')
+print('Hotfix v1.4 final aplicado: tabela do gabarito alinhada e versão visível atualizada')
