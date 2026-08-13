@@ -1,12 +1,10 @@
-// ADELITA-COMMENTARY-LOOKUP-v1.4
+// ADELITA-COMMENTARY-LOOKUP-v1.4.1
 (() => {
-  const DB_NAME='adelita_commentary_remote_v14';
-  const DB_VERSION=1;
-  const STORE='comments';
-  const memory=new Map();
+  const DB_NAME='adelita_commentary_remote_v141';
+  const DB_VERSION=1, STORE='comments', memory=new Map();
   let dbPromise=null;
 
-  // Sementes locais de referência: mantêm os testes já validados independentes da rede.
+  // Questões-semente já validadas. O restante é consultado somente quando a professora pede.
   const STATIC={
     '4000331118':{sid:'4000331118',answer:'A',general:'A questão exige reconhecer a distinção feita por Foucault entre duas formas modernas de exercício do poder: uma voltada ao corpo individual e outra à regulação da população como conjunto biológico.',alternatives:{A:'Correta. O primeiro tipo corresponde ao poder disciplinar, que atua sobre os corpos individuais por meio de vigilância, normalização e controle; o segundo é o biopoder, que regula populações por meio de estatísticas, políticas de saúde e gestão da vida coletiva.',B:'Incorreta. “Dominação legal” é conceito associado a Weber, não a Foucault, e não corresponde ao primeiro tipo descrito.',C:'Incorreta. A alternativa é genérica e não utiliza os conceitos específicos formulados por Foucault.',D:'Incorreta. Panoptismo é um mecanismo do poder disciplinar, e genealogia é um método analítico, não uma forma de poder.'}},
     '4000000063':{sid:'4000000063',answer:'C',general:'',alternatives:{A:'Alternativa A está incorreta. Platão considera a Beleza uma ideia dotada de perfeição; nesse sentido, ela deve ser independente dos juízos particulares.',B:'Alternativa B está incorreta. Platão acredita que há uma Beleza superior; portanto, belo e feio se distinguem.',C:'Alternativa C está correta. A resposta está de acordo com a concepção platônica de conhecimento: é preciso conhecer a ideia de Beleza para julgar as coisas belas.',D:'Alternativa D está incorreta. Para Platão, o filósofo é capaz de ter acesso às ideias; o critério não é inacessível aos seres humanos.',E:'Alternativa E está incorreta. Para Platão, o objeto produzido pelo artista é aparência, não a Beleza em si.'}},
@@ -40,36 +38,56 @@
     return null;
   }
   async function cachePut(row){memory.set(row.sid,row);try{const db=await openDb();await new Promise(resolve=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(row);tx.oncomplete=()=>resolve();tx.onerror=()=>resolve()})}catch(_){}}
+
   function normalizePayload(sid,payload){
-    const data=payload?.data??payload?.response?.data??payload;if(!data||typeof data!=='object')return null;
+    const data=payload?.response?.data??payload?.data??payload;
+    if(!data||typeof data!=='object')return null;
     const alternatives={};
-    (data.alternatives||data.solution_data?.alternatives||[]).forEach((a,i)=>{const letter=String(a?.letter??String.fromCharCode(65+i)).trim().toUpperCase();const t=htmlText(a?.solution_html??a?.commentary??'');if(letter&&t)alternatives[letter]=t});
+    (data.alternatives||data.solution_data?.alternatives||[]).forEach((a,i)=>{
+      const letter=String(a?.letter??String.fromCharCode(65+i)).trim().toUpperCase();
+      const t=htmlText(a?.solution_html??a?.commentary??'');if(letter&&t)alternatives[letter]=t;
+    });
     const general=usefulGeneral(data.solution_html??data.solution_data?.solution_html??'');
     if(!general&&!Object.keys(alternatives).length)return null;
     return{sid,general,alternatives,answer:String(data.gabarito??data.solution_data?.gabarito??'').trim().toUpperCase(),fetchedAt:Date.now()};
   }
-  function parseReaderText(text){
+  function parseTextJson(text){
     const raw=String(text||'').trim();if(!raw)return null;
     try{return JSON.parse(raw)}catch(_){}
     const fenced=raw.match(/```(?:json)?\s*([\s\S]*?)```/i);if(fenced){try{return JSON.parse(fenced[1].trim())}catch(_){}}
     const a=raw.indexOf('{'),z=raw.lastIndexOf('}');if(a>=0&&z>a){try{return JSON.parse(raw.slice(a,z+1))}catch(_){}}
     return null;
   }
+  function unwrapReader(value){
+    if(!value)return null;
+    if(typeof value==='string')return unwrapReader(parseTextJson(value));
+    if(typeof value!=='object')return null;
+    // Resposta original da API.
+    const direct=value?.response?.data??value?.data??value;
+    if(direct&&(direct.alternatives||direct.solution_data||direct.solution_html||direct.gabarito))return value;
+    // Jina Reader em Accept: application/json guarda o conteúdo lido em data.content.
+    const content=value?.data?.content??value?.content??value?.data?.text??value?.text;
+    if(typeof content==='string')return unwrapReader(content);
+    return null;
+  }
   async function fetchOne(sid){
     const cached=await cacheGet(sid);if(cached)return cached;
     const target=`https://drivedepobre.com/api/questoes/q/${encodeURIComponent(sid)}/solucao`;
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),14000);
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),16000);
     try{
-      // O proxy de leitura evita o bloqueio CORS do endpoint original; só o ID da questão é enviado.
-      const r=await fetch(`https://r.jina.ai/${target}`,{method:'GET',credentials:'omit',signal:controller.signal,cache:'default'});
-      if(!r.ok)return null;const payload=parseReaderText(await r.text());if(!payload)return null;
+      const r=await fetch(`https://r.jina.ai/${target}`,{method:'GET',credentials:'omit',headers:{Accept:'application/json'},signal:controller.signal,cache:'default'});
+      if(!r.ok)return null;
+      const raw=await r.text();
+      const outer=parseTextJson(raw)||raw;
+      const payload=unwrapReader(outer);
+      if(!payload)return null;
       const row=normalizePayload(sid,payload);if(row)await cachePut(row);return row;
     }catch(err){console.warn(`Comentário ${sid} indisponível`,err);return null}finally{clearTimeout(timer)}
   }
   function attach(q,row){
     if(!q||!row)return false;if(row.general)q.commentary=row.general;
     (q.o||[]).forEach((o,i)=>{const letter=String(o?.l??String.fromCharCode(65+i)).trim().toUpperCase();const t=row.alternatives?.[letter];if(t)o.commentary=t});
-    q.__adelita_remote_commentary_v14=true;return !!(row.general||(q.o||[]).some(o=>o.commentary));
+    q.__adelita_remote_commentary_v141=true;return !!(row.general||(q.o||[]).some(o=>o.commentary));
   }
   async function enrichQuestions(questions,{concurrency=3,onProgress=null}={}){
     const all=questions||[],already=all.filter(q=>q?.commentary||(q?.o||[]).some(o=>o?.commentary)).length;
