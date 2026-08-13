@@ -3,6 +3,7 @@ from pathlib import Path
 site=Path('_site')
 index=site/'index.html'
 history=site/'history_v11.js'
+sw=site/'sw.js'
 text=index.read_text(encoding='utf-8')
 h=history.read_text(encoding='utf-8')
 
@@ -69,9 +70,16 @@ for oldv in ('v1.3','v1.3.1','v1.3.2'):
     text=text.replace(f'Adelita {oldv}</title>','Adelita v1.4</title>')
     text=text.replace(f'para a Profa. Adelita · {oldv}</small>','para a Profa. Adelita · v1.4</small>')
 
+# O sw.js do repositório continua simples; no artefato publicado, muda a chave
+# de cache para garantir que o navegador baixe o builder v1.4 imediatamente.
+if sw.exists():
+    s=sw.read_text(encoding='utf-8')
+    s=s.replace("adelita-pwa-v1.3.2","adelita-pwa-v1.4").replace("adelita-pwa-v1.3.1","adelita-pwa-v1.4")
+    sw.write_text(s,encoding='utf-8')
+
 history.write_text(h,encoding='utf-8')
 index.write_text(text,encoding='utf-8')
 
 if 'columnWidths:widths' not in h or 'width:{size:10200' not in h:
     raise SystemExit('v1.3.1: nova tabela não foi aplicada')
-print('Hotfix v1.4 final aplicado: tabela do gabarito alinhada e versão visível atualizada')
+print('Hotfix v1.4 final aplicado: tabela alinhada, versão visível e cache publicados')
